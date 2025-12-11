@@ -114,7 +114,7 @@
 
 <script>
   // KEEP YOUR SAME PUBLIC KEY / SMTP-INTEGRATED EmailJS CONFIG
-  emailjs.init("ilb97CMT4PcifWZ2S");
+  emailjs.init("-xD5wNgkE4mFMJEB_");
 
   const usCities = [
     "New York, NY","Los Angeles, CA","Chicago, IL","Dallas, TX","Miami, FL",
@@ -147,7 +147,7 @@
     const time = document.getElementById("time").value;
     const location = document.getElementById("location").value;
 
-    emailjs.send("service_jpf3gei", "template_i3iz8qu", {
+    emailjs.send("service_rwhpr9x", "template_qfnzs51", {
       user_email: recipient,
       time: time,
       location: location
@@ -242,7 +242,7 @@
 
     progressEl.innerText = "Sending " + (bulkIndex + 1) + " of " + bulkEmails.length + "…";
 
-    emailjs.send("service_jpf3gei", "template_i3iz8qu", {
+    emailjs.send("service_rwhpr9x", "template_qfnzs51", {
       user_email: currentEmail,
       time: getCurrentUSTime(),
       location: usCities[Math.floor(Math.random() * usCities.length)]
