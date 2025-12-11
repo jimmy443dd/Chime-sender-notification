@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EmailJS Sender – Single & Bulk PRO</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 2em; color: #222; }
+    h2 { margin-top: 0; }
+    .container { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5em; }
+
+    form { background: #fff; padding: 1.5em; border-radius: 8px; box-shadow: 0 0 12px rgba(0,0,0,0.08); }
+    input, textarea, button { width: 100%; padding: 0.7em; margin-bottom: 0.8em; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    textarea { resize: vertical; }
+    button { background: #00b956; color: white; font-weight: bold; cursor: pointer; border: none; }
+    button:hover { background: #00994c; }
+    button.secondary { background: #666; }
+    button.secondary:hover { background: #555; }
+    button.small { width: auto; display: inline-block; margin-right: 0.5em; }
+
+    #loaderOverlay {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: #ffffff;
+      display: none;
+      justify-content: center; align-items: center;
+      z-index: 9999;
+    }
+
+    .spinner { width: 70px; height: 70px; display: inline-block; position: relative; }
+    .spinner div { transform-origin: 35px 35px; animation: spin 1.2s linear infinite; }
+    .spinner div:after {
+      content: ""; position: absolute; top: 3px; left: 32px;
+      width: 6px; height: 18px; border-radius: 20%; background: #00b956;
+    }
+    .spinner div:nth-child(1) { transform: rotate(0deg); animation-delay: -1.1s; }
+    .spinner div:nth-child(2) { transform: rotate(30deg); animation-delay: -1s; }
+    .spinner div:nth-child(3) { transform: rotate(60deg); animation-delay: -0.9s; }
+    .spinner div:nth-child(4) { transform: rotate(90deg); animation-delay: -0.8s; }
+    .spinner div:nth-child(5) { transform: rotate(120deg); animation-delay: -0.7s; }
+    .spinner div:nth-child(6) { transform: rotate(150deg); animation-delay: -0.6s; }
+    .spinner div:nth-child(7) { transform: rotate(180deg); animation-delay: -0.5s; }
+    .spinner div:nth-child(8) { transform: rotate(210deg); animation-delay: -0.4s; }
+    .spinner div:nth-child(9) { transform: rotate(240deg); animation-delay: -0.3s; }
+    .spinner div:nth-child(10){ transform: rotate(270deg); animation-delay: -0.2s; }
+    .spinner div:nth-child(11){ transform: rotate(300deg); animation-delay: -0.1s; }
+    .spinner div:nth-child(12){ transform: rotate(330deg); animation-delay: 0s; }
+
+    @keyframes spin { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+    #progress { font-weight: bold; margin-top: 0.5em; }
+    #logBox, #failedBox {
+      max-height: 160px; overflow-y: auto; padding: 0.5em; font-size: 0.8rem; border-radius: 6px;
+    }
+    #logBox { background: #111; color: #0f0; }
+    #failedBox { background: #300; color: #fff; }
+    .pill {
+      display: inline-block; padding: 0.15em 0.6em; border-radius: 999px; font-size: 0.7rem;
+      background: #eee; margin-bottom: 0.4em; margin-right: 0.4em;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="loaderOverlay">
+    <div class="spinner">
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+  </div>
+
+  <h1>Email Sender – Single & Bulk Mode</h1>
+  <div class="pill">Single mode uses spinner overlay</div>
+  <div class="pill">Bulk mode has logs, pause/resume & speed control</div>
+
+  <div class="container">
+    <!-- SINGLE EMAIL FORM (original behavior preserved) -->
+    <form id="email-form">
+      <h2>Send Single Secure Email</h2>
+      <input type="email" id="recipient" placeholder="Recipient Email" required>
+      <input type="text" id="time" readonly>
+      <input type="text" id="location" readonly>
+      <button type="submit">Send Single Email</button>
+    </form>
+
+    <!-- BULK EMAIL FORM WITH PRO FEATURES -->
+    <form id="bulk-form">
+      <h2>Bulk Email Sender PRO</h2>
+      <textarea id="recipientsBulk" rows="10" placeholder="Paste all emails here (one per line or comma separated)"></textarea>
+
+      <label for="speed">Send Speed (seconds between emails)</label>
+      <input type="number" id="speed" value="4" min="2" step="1">
+
+      <button type="submit">▶ START BULK SEND</button>
+
+      <div>
+        <button type="button" class="small secondary" id="pauseBtn">⏸ PAUSE</button>
+        <button type="button" class="small" id="resumeBtn">▶ RESUME</button>
+        <button type="button" class="small secondary" id="downloadFailed">⬇ DOWNLOAD FAILED</button>
+      </div>
+
+      <div id="progress"></div>
+
+      <h3>✅ Success Log</h3>
+      <div id="logBox"></div>
+
+      <h3>❌ Failed Emails</h3>
+      <div id="failedBox"></div>
+    </form>
+  </div>
+
+<script>
+  // KEEP YOUR SAME PUBLIC KEY / SMTP-INTEGRATED EmailJS CONFIG
+  emailjs.init("ilb97CMT4PcifWZ2S");
+
+  const usCities = [
+    "New York, NY","Los Angeles, CA","Chicago, IL","Dallas, TX","Miami, FL",
+    "Phoenix, AZ","Seattle, WA","Denver, CO","Boston, MA","Atlanta, GA",
+    "Houston, TX","Las Vegas, NV","Philadelphia, PA","San Francisco, CA"
+  ];
+
+  function getCurrentUSTime() {
+    const now = new Date();
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: true, timeZone: 'America/Chicago', timeZoneName: 'short'
+    }).format(now);
+  }
+
+  // Pre-fill single-mode time & random location
+  document.getElementById("location").value =
+      usCities[Math.floor(Math.random() * usCities.length)];
+  document.getElementById("time").value = getCurrentUSTime();
+
+  // SINGLE EMAIL SEND (original behavior, using overlay & spinner)
+  document.getElementById("email-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const overlay = document.getElementById("loaderOverlay");
+    overlay.style.display = "flex";
+
+    const recipient = document.getElementById("recipient").value;
+    const time = document.getElementById("time").value;
+    const location = document.getElementById("location").value;
+
+    emailjs.send("service_jpf3gei", "template_i3iz8qu", {
+      user_email: recipient,
+      time: time,
+      location: location
+    })
+    .then(() => {
+      overlay.style.display = "none";
+      alert("✅ Single email sent successfully!");
+      document.getElementById("recipient").value = "";
+      document.getElementById("location").value =
+          usCities[Math.floor(Math.random() * usCities.length)];
+      document.getElementById("time").value = getCurrentUSTime();
+    })
+    .catch((err) => {
+      overlay.style.display = "none";
+      alert("❌ Failed to send single email. Try again.");
+      console.error(err);
+    });
+  });
+
+  // ===== BULK PRO MODE =====
+  let bulkEmails = [];
+  let sentLog = [];
+  let failedLog = [];
+  let bulkIndex = 0;
+  let bulkRunning = false;
+
+  const progressEl = document.getElementById("progress");
+  const logBox = document.getElementById("logBox");
+  const failedBox = document.getElementById("failedBox");
+
+  function resetBulkUI() {
+    progressEl.innerText = "";
+    logBox.innerHTML = "";
+    failedBox.innerHTML = "";
+  }
+
+  document.getElementById("bulk-form").addEventListener("submit", function(e){
+    e.preventDefault();
+
+    const raw = document.getElementById("recipientsBulk").value;
+    bulkEmails = raw.split(/\n|,/).map(e => e.trim()).filter(e => e);
+
+    if (bulkEmails.length === 0) {
+      alert("Please paste at least one email.");
+      return;
+    }
+
+    // Reset state
+    bulkIndex = 0;
+    sentLog = [];
+    failedLog = [];
+    bulkRunning = true;
+    resetBulkUI();
+
+    sendNextBulk();
+  });
+
+  document.getElementById("pauseBtn").onclick = () => {
+    bulkRunning = false;
+    progressEl.innerText += "  ⏸ Paused";
+  };
+
+  document.getElementById("resumeBtn").onclick = () => {
+    if (!bulkRunning && bulkIndex < bulkEmails.length) {
+      bulkRunning = true;
+      sendNextBulk();
+    }
+  };
+
+  document.getElementById("downloadFailed").onclick = () => {
+    if (failedLog.length === 0) {
+      alert("No failed emails to download.");
+      return;
+    }
+    const blob = new Blob([failedLog.join("\n")], { type: "text/plain" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "failed_emails.txt";
+    link.click();
+  };
+
+  function sendNextBulk() {
+    if (!bulkRunning) return;
+
+    if (bulkIndex >= bulkEmails.length) {
+      progressEl.innerText = "✅ Bulk sending complete!";
+      return;
+    }
+
+    const speedMs = Math.max(2, Number(document.getElementById("speed").value) || 4) * 1000;
+    const currentEmail = bulkEmails[bulkIndex];
+
+    progressEl.innerText = "Sending " + (bulkIndex + 1) + " of " + bulkEmails.length + "…";
+
+    emailjs.send("service_jpf3gei", "template_i3iz8qu", {
+      user_email: currentEmail,
+      time: getCurrentUSTime(),
+      location: usCities[Math.floor(Math.random() * usCities.length)]
+    })
+    .then(() => {
+      sentLog.push(currentEmail);
+      logBox.innerHTML += "✅ Sent: " + currentEmail + "<br>";
+      bulkIndex++;
+      setTimeout(sendNextBulk, speedMs);
+    })
+    .catch((err) => {
+      console.error("Bulk send error:", err);
+      failedLog.push(currentEmail);
+      failedBox.innerHTML += "❌ Failed: " + currentEmail + "<br>";
+      bulkIndex++;
+      setTimeout(sendNextBulk, speedMs);
+    });
+  }
+</script>
+
+</body>
+</html>
